@@ -36,9 +36,12 @@
             second-value (nth @program-code (nth @program-code (+ 2 @idx)))
             result-idx (nth @program-code (+ 3 @idx))]
          (cond
-           (= operation 1) (addition first-value second-value result-idx program-code)
-           (= operation 2) (multiplication first-value second-value result-idx program-code)))
-      (swap! idx #(+ % 4)))
+           (= operation 1) (do
+                             (addition first-value second-value result-idx program-code)
+                             (swap! idx #(+ % 4)))
+           (= operation 2) (do
+                             (multiplication first-value second-value result-idx program-code)
+                             (swap! idx #(+ % 4))))))
     (first @program-code)))
   
 (defn run-pt1
