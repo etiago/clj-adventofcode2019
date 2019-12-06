@@ -1,5 +1,6 @@
 (ns clj-adventofcode2019.puzzle3
-  (:gen-class))
+  (:gen-class)
+  (:require [clojure.set :as set]))
 
 (defn- load-data
   []
@@ -19,6 +20,10 @@
    last-visited
    (fn [prev]
      (into [] (map + prev movement-mask)))))
+
+(defn- pure-update-last-visited
+  [last-visited movement-mask]
+  (into [] (map + last-visited movement-mask)))
 
 (defn- direction-configs-cond
   [direction last-visited-x last-visited-y steps]
@@ -45,7 +50,7 @@
         last-visited-mask (:last-visited-mask direction-configs)
         new-positions (into #{} (map direction-fn adding-range))]
     (update-last-visited last-visited last-visited-mask)
-    (swap! visited-set #(clojure.set/union % new-positions))))
+    (swap! visited-set #(set/union % new-positions))))
 
 (defn- visited-set-for-single-side
   [side]
@@ -76,54 +81,50 @@
      min
      (map
       #(manhattan-distance [1 1] %)
-      (clojure.set/intersection (visited-set-for-single-side (first data)) (visited-set-for-single-side (second data)))))))
+      (set/intersection (visited-set-for-single-side (first data)) (visited-set-for-single-side (second data)))))))
 
 (defn- trace-generic
-  [direction adding-range steps last-visited visited-set running-cost visited-map-to-cost]
+  [direction adding-range steps visited-set state]
   (let
-      [last-visited-x (first @last-visited)
-       last-visited-y (second @last-visited)
+      [last-visited-x (first (:last-visited state))
+       last-visited-y (second (:last-visited state))
        direction-configs (direction-configs-cond direction last-visited-x last-visited-y steps)
        direction-fn (:direction-fn direction-configs)
        last-visited-mask (:last-visited-mask direction-configs)
        cost-selector (:cost-selector direction-configs)
        new-positions (into #{} (map direction-fn adding-range))
-       matching-positions (clojure.set/intersection new-positions visited-set)]
-      
-    (when (not-empty matching-positions)
-      (swap!
-       visited-map-to-cost
-       #(apply merge %
-               (map
-                (fn [matching-pos]
-                  (let [cost (+ @running-cost (Math/abs (- (cost-selector matching-pos) (cost-selector @last-visited))))]
-                    (identity {matching-pos cost})))
-                matching-positions))))
-    (update-last-visited last-visited last-visited-mask)
-    (swap! running-cost #(+ % steps))))
+       matching-positions (set/intersection new-positions visited-set)]
+
+    (assoc state
+           :last-visited (pure-update-last-visited (:last-visited state) last-visited-mask)
+           :running-cost (+ (:running-cost state) steps)
+           :visited-map-to-cost (if (not-empty matching-positions)
+                                  (apply merge (:visited-map-to-cost state) (map
+                                                                             (fn [matching-pos]
+                                                                               (let [cost (+ (:running-cost state) (Math/abs (- (cost-selector matching-pos) (cost-selector (:last-visited state)))))]
+                                                                                 (identity {matching-pos cost})))
+                                                                             matching-positions))
+                                  (:visited-map-to-cost state)))))
 
 (defn- trace
   [side visited-set state]
-  (let [last-visited (atom [1 1])
-        running-cost (atom 0)
-        visited-map-to-cost (atom {})]
-    (dorun
-     (map
-      (fn [movement]
-        (let [direction (first movement)
-              steps (second movement)
-              adding-range (range 1 (inc steps))]
-          (trace-generic direction adding-range steps last-visited visited-set running-cost visited-map-to-cost)))
-      side))
-    @visited-map-to-cost))
+  (reduce
+   (fn [old-state movement]
+     (let [direction (first movement)
+           steps (second movement)
+           adding-range (range 1 (inc steps))
+           new-state (trace-generic direction adding-range steps visited-set old-state)]
+       new-state))
+   state
+   side))
 
 (defn run-pt2
   []
   (let [data (load-data)
-        matching-positions (clojure.set/intersection (visited-set-for-single-side (first data)) (visited-set-for-single-side (second data)))
+        matching-positions (set/intersection (visited-set-for-single-side (first data)) (visited-set-for-single-side (second data)))
         state {:last-visited [1 1]
                :running-cost 0
-               :visited-map-to-cost}]
-    (apply min (vals (merge-with +
-                (trace (first data) matching-positions state)
-                (trace (second data) matching-positions state))))))
+               :visited-map-to-cost {}}]
+     (apply min (vals (merge-with +
+                 (:visited-map-to-cost (trace (first data) matching-positions state))
+                 (:visited-map-to-cost (trace (second data) matching-positions state)))))))

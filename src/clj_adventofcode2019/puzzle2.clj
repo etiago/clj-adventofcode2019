@@ -25,23 +25,39 @@
   [first-value second-value result-idx program-code]
   (operation * first-value second-value result-idx program-code))
 
+(defn- extract-value
+  [program-code running-idx]
+  (nth @program-code (nth @program-code (+ 1 @runningidx))))
+
+(defn- sum
+  [a b c]
+  (+ a b c))
+
+
+
 (defn- calculate-output-for-noun-and-verb
   [noun verb]
   (let [program-code (atom (load-code))
-        idx (atom 0)]
+        running-idx (atom 0)]
     (swap! program-code #(assoc % 1 noun 2 verb))
-    (while (not= 99 (nth @program-code @idx))
-      (let [operation (nth @program-code @idx)
-            first-value (nth @program-code (nth @program-code (+ 1 @idx)))
-            second-value (nth @program-code (nth @program-code (+ 2 @idx)))
-            result-idx (nth @program-code (+ 3 @idx))]
+    (while (not= 99 (nth @program-code @running-idx))
+      (let [operation (nth @program-code @running-idx)
+            first-value (nth @program-code (nth @program-code (+ 1 @running-idx)))
+            second-value (nth @program-code (nth @program-code (+ 2 @running-idx)))
+            result-idx (nth @program-code (+ 3 @running-idx))
+
+            ]
          (cond
            (= operation 1) (do
+                             
                              (addition first-value second-value result-idx program-code)
-                             (swap! idx #(+ % 4)))
+                             (swap! running-idx #(+ % 4)))
            (= operation 2) (do
                              (multiplication first-value second-value result-idx program-code)
-                             (swap! idx #(+ % 4))))))
+                             (swap! running-idx #(+ % 4))))))
+           ;; (= operation 3) (do
+           ;;                   (put-in-pos first-value program-code)
+           ;;                   (swap! idx #(+ % 2))))))
     (first @program-code)))
   
 (defn run-pt1

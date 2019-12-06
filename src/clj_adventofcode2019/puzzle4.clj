@@ -11,25 +11,30 @@
 
 (defn always-increasing?
   [p]
-  (every?
-   true?
-   (map
-    #(<= (Integer/valueOf (subs p % (inc %))) (Integer/valueOf (subs p (inc %) (+ 2 %))))
-    (range 0 (dec (count p))))))
+  (not
+   (some
+    true?
+    (map
+     #(> (Integer/valueOf (subs p % (inc %))) (Integer/valueOf (subs p (inc %) (+ 2 %))))
+     (range 0 (dec (count p)))))))
 
 (defn nearest-always-increasing
   [p]
-  (Integer/valueOf
-   (clojure.string/join
-    (reduce 
-     #(if (== (count p) (count %1))
-        %1
-        (if (<= (Integer/valueOf (subs p (dec %2) %2))
-                (Integer/valueOf (subs p %2 (inc %2))))
-          (conj %1 (subs p %2 (inc %2)))
-         (into [] (concat %1 (repeat (- (count p)  %2) (nth %1 (dec (count %1))))))))
-    [(subs p 0 1)]
-    (range 1 (count p))))))
+  (let [p-length (count p)]
+    (Integer/valueOf
+     (clojure.string/join
+      (reduce 
+       #(let [acc-length (count %1)]
+          (if (== p-length acc-length)
+            %1
+            (if (<= (Integer/valueOf (subs p (dec %2) %2)) (Integer/valueOf (subs p %2 (inc %2))))
+              (conj %1 (subs p %2 (inc %2)))
+              (into [] (concat %1 (repeat (- p-length  %2) (nth %1 (dec acc-length))))))))
+       [(subs p 0 1)]
+       (range 1 p-length))))))
+
+(def nearest-always-increasing-memo
+  (memoize nearest-always-increasing))
 
 (defn run-pt1
   []
@@ -61,6 +66,12 @@
       (and (not= (nth p 3) (nth p 4))
            (= (nth p 4) (nth p 5)))))
 
+(defn alternative-has-adjacent-repeated-no-more-than-two?
+  [p]
+  (let [f (frequencies p)
+        v (vals f)]
+    (some #(= % 2) v)))
+    
 (defn growing-numbers 
   [start]
   (let [str-start (String/valueOf start)]
@@ -68,13 +79,16 @@
       (lazy-seq (cons start (growing-numbers (inc start))))
       (lazy-seq (growing-numbers (nearest-always-increasing str-start))))))
 
+(def growing-numbers-memo
+  (memoize growing-numbers))
+
 (defn run-pt2
   []
   (let [potential-passwords
         (map
          #(String/valueOf %)
-         ;(take-while #(<= % 805915) (growing-numbers 347312)))]
-         (take-while #(<= % 647015) (growing-numbers 123257)))]
+         (take-while #(<= % 805915) (growing-numbers 347312)))]
+         ;(take-while #(<= % 647015) (growing-numbers 123257)))]
     (count
      (filter
       #(hacky-has-adjacent-repeated-no-more-than-two? %)
