@@ -27,8 +27,7 @@
           total
           (do
             (swap! total-map (fn [_] (identity new-total-map)))
-            (recur @total-map new-total)))
-        ))))
+            (recur @total-map new-total)))))))
 
 (defn find-to-root
   [reversed-orbits p path-so-far]
@@ -42,6 +41,7 @@
         reversed-orbits (reduce #(assoc %1 (second %2) (first %2)) {} orbits)
         you (find-to-root reversed-orbits "YOU" #{})
         san (find-to-root reversed-orbits "SAN" #{})]
-    (count    (clojure.set/union
-    (clojure.set/difference you san)
-    (clojure.set/difference san you)))))
+    (count
+     (clojure.set/union
+      (clojure.set/difference you san)
+      (clojure.set/difference san you)))))
