@@ -19,83 +19,88 @@
 
 (defn- operation
   [operation-fn first-value second-value result-idx program-code]
-  (swap!
-   program-code
-   #(assoc
-     %
-     result-idx
-     (operation-fn first-value second-value))))
+  (assoc
+    @program-code
+    result-idx
+    (operation-fn first-value second-value)))
 
 (defn- addition
   ([config]
    (fn [first-value second-value result-idx]
-     (addition first-value second-value result-idx (:program-code config) (:running-idx config) (:argcount config))))
-  ([first-value second-value result-idx program-code running-idx argcount]
-   (operation + first-value second-value result-idx program-code)
-   (swap! running-idx #(+ % (inc argcount)))))
+     (addition config first-value second-value result-idx (:program-code config) (:running-idx config) (:argcount config))))
+  ([config first-value second-value result-idx program-code running-idx argcount]
+   (assoc config :program-code (operation + first-value second-value result-idx program-code) :running-idx (+ (inc argcount) @running-idx))))
 
 (defn- multiplication
   ([config]
    (fn [first-value second-value result-idx]
-     (multiplication first-value second-value result-idx (:program-code config) (:running-idx config) (:argcount config))))
-  ([first-value second-value result-idx program-code running-idx argcount]
-   (operation * first-value second-value result-idx program-code)
-   (swap! running-idx #(+ % (inc argcount)))))
+     (multiplication config first-value second-value result-idx (:program-code config) (:running-idx config) (:argcount config))))
+  ([config first-value second-value result-idx program-code running-idx argcount]
+   (assoc config :program-code (operation * first-value second-value result-idx program-code) :running-idx (+ (inc argcount) @running-idx))))
+;;    (operation * first-value second-value result-idx program-code)
+;;    (swap! running-idx #(+ % (inc argcount)))))
 
 (defn- put-in-pos
   ([config]
    (fn [first-value]
-     (put-in-pos first-value (:program-code config) (:running-idx config) (:argcount config) (:input config))))
-  ([first-value program-code running-idx argcount input]
+     (put-in-pos config first-value (:program-code config) (:running-idx config) (:argcount config) (:input config))))
+  ([config first-value program-code running-idx argcount input]
                                         ;   (let [input (Integer/valueOf (read-line))]
-   (swap! program-code #(assoc % first-value input))
-   (swap! running-idx #(+ % (inc argcount)))))
+   (assoc
+    config
+    :program-code (assoc @program-code first-value input)
+    :running-idx (+ (inc argcount) @running-idx))))
+;;    (swap! program-code #(assoc % first-value input))
+;;    (swap! running-idx #(+ % (inc argcount)))))
 
 (defn- print-pos
   ([config]
    (fn [first-value]
-     (print-pos first-value (:program-code config) (:running-idx config) (:argcount config))))
-  ([first-value program-code running-idx argcount]
-   (swap! running-idx #(+ % (inc argcount)))
-   first-value))
+     (print-pos config first-value (:program-code config) (:running-idx config) (:argcount config))))
+  ([config first-value program-code running-idx argcount]
+   (assoc
+    config
+    :program-code @program-code
+    :running-idx (+ (inc argcount) @running-idx)
+    :output first-value)))
 
 (defn- jump-if-true
   ([config]
    (fn [first-value second-value]
-     (jump-if-true first-value second-value (:program-code config) (:running-idx config) (:argcount config))))
-  ([first-value second-value program-code running-idx argcount]
+     (jump-if-true config first-value second-value (:program-code config) (:running-idx config) (:argcount config))))
+  ([config first-value second-value program-code running-idx argcount]
    (if (not= 0 first-value)
-     (swap! running-idx (fn [_] (identity second-value)))
-     (swap! running-idx #(+ % (inc argcount))))))
+     (assoc config :program-code @program-code :running-idx second-value)
+     (assoc config :program-code @program-code :running-idx (+ (inc argcount) @running-idx)))))
 
 (defn- jump-if-false
   ([config]
    (fn [first-value second-value]
-     (jump-if-false first-value second-value (:program-code config) (:running-idx config) (:argcount config))))
-  ([first-value second-value program-code running-idx argcount]
-   (if (= 0 first-value)
-     (swap! running-idx (fn [_] (identity second-value)))
-     (swap! running-idx #(+ % (inc argcount))))))
+     (jump-if-false config first-value second-value (:program-code config) (:running-idx config) (:argcount config))))
+  ([config first-value second-value program-code running-idx argcount]
+   (if (not= 0 first-value)
+     (assoc config :program-code @program-code :running-idx second-value)
+     (assoc config :program-code @program-code :running-idx (+ (inc argcount) @running-idx)))))
 
 (defn- less-than
   ([config]
    (fn [first-value second-value third-value]
-     (less-than first-value second-value third-value (:program-code config) (:running-idx config) (:argcount config))))
-  ([first-value second-value third-value program-code running-idx argcount]
+     (less-than config first-value second-value third-value (:program-code config) (:running-idx config) (:argcount config))))
+  ([config first-value second-value third-value program-code running-idx argcount]
+   (print "less than")
    (if (< first-value second-value)
-     (swap! program-code #(assoc % third-value 1))
-     (swap! program-code #(assoc % third-value 0)))
-   (swap! running-idx #(+ % (inc argcount)))))
+     (assoc config :program-code (assoc @program-code third-value 1) :running-idx (+ (inc argcount) @running-idx))
+     (assoc config :program-code (assoc @program-code third-value 0) :running-idx (+ (inc argcount) @running-idx)))))
 
 (defn- equals
   ([config]
    (fn [first-value second-value third-value]
-     (equals first-value second-value third-value (:program-code config) (:running-idx config) (:argcount config))))
-  ([first-value second-value third-value program-code running-idx argcount]
+     (equals config first-value second-value third-value (:program-code config) (:running-idx config) (:argcount config))))
+  ([config first-value second-value third-value program-code running-idx argcount]
+   (println "equals")
    (if (= first-value second-value)
-     (swap! program-code #(assoc % third-value 1))
-     (swap! program-code #(assoc % third-value 0)))
-   (swap! running-idx #(+ % (inc argcount)))))
+     (assoc config :program-code (assoc @program-code third-value 1) :running-idx (+ (inc argcount) @running-idx))
+     (assoc config :program-code (assoc @program-code third-value 0) :running-idx (+ (inc argcount) @running-idx)))))
 
 (defn- extract-values-from-program-code
   [program-code running-idx cnt mask]
@@ -166,20 +171,23 @@
                              (if (not @initialised)
                                (swap! initialised (fn [_] true))
                                (swap! inputs #(rest %)))
-                             (apply
-                              ((:fn operation-configs)
-                               {:program-code program-code
-                                :running-idx running-idx
-                                :argcount (:argcount operation-configs)
-                                :input current-input})
-                              (extract-values-from-program-code
-                               program-code
-                               running-idx
-                               (:argcount operation-configs)
-                               mask))
-                             (swap! inputs #(into [] (rest %))))
+                             (let [old-configs {:program-code program-code
+                                                :running-idx running-idx
+                                                :argcount (:argcount operation-configs)
+                                                :input current-input}
+                                   new-configs
+                                   (apply
+                                    ((:fn operation-configs) old-configs)
+                                    (extract-values-from-program-code
+                                     program-code
+                                     running-idx
+                                     (:argcount operation-configs)
+                                     mask))]
+                               (swap! program-code (fn [_] (get new-configs :program-code)))
+                               (swap! running-idx (fn [_] (get new-configs :running-idx)))
+                             (swap! inputs #(into [] (rest %)))))
            (= 4 operation) (do
-                             (let [output
+                             (let [new-configs
                                    (apply
                                     ((:fn operation-configs)
                                      {:program-code program-code
@@ -190,18 +198,21 @@
                                      running-idx
                                      (:argcount operation-configs)
                                      mask))]
-                               (swap! last-output (fn [_] (identity output)))
+                               (swap! running-idx (fn [_] (get new-configs :running-idx)))
+                               (swap! last-output (fn [_] (get new-configs :output)))
                                (swap! suspend (fn [_] true))))
-           :else (apply
-                  ((:fn operation-configs)
-                   {:program-code program-code
-                    :running-idx running-idx
-                    :argcount (:argcount operation-configs)})
-                  (extract-values-from-program-code
-                   program-code
-                   running-idx
-                   (:argcount operation-configs)
-                   mask)))))
+           :else (let [new-configs (apply
+                                    ((:fn operation-configs)
+                                     {:program-code program-code
+                                      :running-idx running-idx
+                                      :argcount (:argcount operation-configs)})
+                                    (extract-values-from-program-code
+                                     program-code
+                                     running-idx
+                                     (:argcount operation-configs)
+                                     mask))]
+                   (swap! program-code (fn [_] (get new-configs :program-code)))
+                   (swap! running-idx (fn [_] (get new-configs :running-idx)))))))
      (when (= 99 (nth @program-code @running-idx))
        (swap! finished (fn [_] true)))
      @last-output)))
@@ -262,27 +273,26 @@
         current-permutation (atom nil)]
     (apply
      max
-
-      (map
-       #(do
-          (swap! current-permutation (fn [_] %))
-          (let [output-outer
-                (reduce
-                 (fn [last-output cur-amp-setting]
-                   (let [cur-computer (mod cur-amp-setting 5)
-                         cur-settings (get @state cur-computer)
-                         new-inputs (swap! (:inputs cur-settings) (fn [_]
-                                                                    (identity [cur-amp-setting (first last-output)])))
-                         output (calculate-output
-                                 (:program-code cur-settings)
-                                 (:running-idx cur-settings)
-                                 (:inputs cur-settings)
-                                 (:initialised cur-settings)
-                                 (:finished cur-settings))]
-                     (into [] (cons output last-output))))
-                 [0]
-                 (take-while (not-finished state current-permutation) (cycle %)))]
-            (swap! state (fn [_] (init-state)))
-            (first (remove nil? output-outer))))
-       (combo/permutations [5 6 7 8 9])))))
+     (map
+      #(do
+         (swap! current-permutation (fn [_] %))
+         (let [output-outer
+               (reduce
+                (fn [last-output cur-amp-setting]
+                  (let [cur-computer (mod cur-amp-setting 5)
+                        cur-settings (get @state cur-computer)
+                        new-inputs (swap! (:inputs cur-settings) (fn [_]
+                                                                   (identity [cur-amp-setting (first last-output)])))
+                        output (calculate-output
+                                (:program-code cur-settings)
+                                (:running-idx cur-settings)
+                                (:inputs cur-settings)
+                                (:initialised cur-settings)
+                                (:finished cur-settings))]
+                    (into [] (cons output last-output))))
+                [0]
+                (take-while (not-finished state current-permutation) (cycle %)))]
+           (swap! state (fn [_] (init-state)))
+           (first (remove nil? output-outer))))
+      (combo/permutations [5 6 7 8 9])))))
 
