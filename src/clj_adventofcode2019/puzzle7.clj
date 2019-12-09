@@ -154,67 +154,81 @@
 (defn- calculate-output
   ([running-idx inputs]
    (calculate-output (atom (load-code)) running-idx inputs))
-  ([program-code running-idx inputs initialised finished]
+  ([state]
    (let [suspend (atom false)
          last-output (atom nil)]
-     (while (and (not @suspend) (not= 99 (nth @program-code @running-idx)))
-       (let [opcode (nth @program-code @running-idx)
+     (while (and (not @suspend) (not= 99 (nth @(:program-code state) @(:running-idx state))))
+       
+       (let [opcode (nth @(:program-code state) @(:running-idx state))
              operation-and-mask (extract-operation-and-mask opcode)
              operation (:operation operation-and-mask)
-             mask (:mask operation-and-mask)
              operation-configs (get configs-per-operation operation)
-             current-input (if (not @initialised)
-                             (first @inputs)
-                             (nth @inputs 1 (first @inputs)))]
+             current-input (if (not @(:initialised state))
+                             (first @(:inputs state))
+                             (nth @(:inputs state) 1 (first @(:inputs state))))
+             values-for-operation (extract-values-from-program-code
+                                   (:program-code state)
+                                   (:running-idx state)
+                                   (:argcount operation-configs)
+                                   (:mask operation-and-mask))
+             old-configs {:program-code (:program-code state)
+                          :running-idx (:running-idx state)
+                          :argcount (:argcount operation-configs)
+                          :input current-input}]
          (cond
            (= 3 operation) (do
-                             (if (not @initialised)
-                               (swap! initialised (fn [_] true))
-                               (swap! inputs #(rest %)))
-                             (let [old-configs {:program-code program-code
-                                                :running-idx running-idx
-                                                :argcount (:argcount operation-configs)
-                                                :input current-input}
-                                   new-configs
-                                   (apply
-                                    ((:fn operation-configs) old-configs)
-                                    (extract-values-from-program-code
-                                     program-code
-                                     running-idx
-                                     (:argcount operation-configs)
-                                     mask))]
-                               (swap! program-code (fn [_] (get new-configs :program-code)))
-                               (swap! running-idx (fn [_] (get new-configs :running-idx)))
-                             (swap! inputs #(into [] (rest %)))))
+                                (if (not @(:initialised state))
+                                  (swap! (:initialised state) (fn [_] true))
+                                  (swap! (:inputs state) #(rest %)))
+                                (let [new-configs (apply ((:fn operation-configs) old-configs) values-for-operation)]
+                                  (swap! (:program-code state) (fn [_] (get new-configs :program-code)))
+                                  (swap! (:running-idx state) (fn [_] (get new-configs :running-idx)))
+                                  (swap! (:inputs state) #(into [] (rest %)))))
            (= 4 operation) (do
-                             (let [new-configs
-                                   (apply
-                                    ((:fn operation-configs)
-                                     {:program-code program-code
-                                      :running-idx running-idx
-                                      :argcount (:argcount operation-configs)})
-                                    (extract-values-from-program-code
-                                     program-code
-                                     running-idx
-                                     (:argcount operation-configs)
-                                     mask))]
-                               (swap! running-idx (fn [_] (get new-configs :running-idx)))
+                             (let [new-configs (apply ((:fn operation-configs) old-configs) values-for-operation)]
+                               (swap! (:running-idx state) (fn [_] (get new-configs :running-idx)))
                                (swap! last-output (fn [_] (get new-configs :output)))
                                (swap! suspend (fn [_] true))))
-           :else (let [new-configs (apply
-                                    ((:fn operation-configs)
-                                     {:program-code program-code
-                                      :running-idx running-idx
-                                      :argcount (:argcount operation-configs)})
-                                    (extract-values-from-program-code
-                                     program-code
-                                     running-idx
-                                     (:argcount operation-configs)
-                                     mask))]
-                   (swap! program-code (fn [_] (get new-configs :program-code)))
-                   (swap! running-idx (fn [_] (get new-configs :running-idx)))))))
-     (when (= 99 (nth @program-code @running-idx))
-       (swap! finished (fn [_] true)))
+              :else (let [new-configs (apply ((:fn operation-configs) old-configs) values-for-operation)]
+                      (swap! (:program-code state) (fn [_] (get new-configs :program-code)))
+                      (swap! (:running-idx state) (fn [_] (get new-configs :running-idx)))))
+         {:suspend @suspend :program-code @(:program-code state) :running-idx @(:running-idx state)})
+       )
+;;       (let [opcode (nth @(:program-code state) @(:running-idx state))
+;;             operation-and-mask (extract-operation-and-mask opcode)
+;;             operation (:operation operation-and-mask)
+;;             operation-configs (get configs-per-operation operation)
+;;             current-input (if (not @(:initialised state))
+;;                             (first @(:inputs state))
+;;                             (nth @(:inputs state) 1 (first @(:inputs state))))
+;;             values-for-operation (extract-values-from-program-code
+;;                                     (:program-code state)
+;;                                     (:running-idx state)
+;;                                     (:argcount operation-configs)
+;;                                     (:mask operation-and-mask))
+;;             old-configs {:program-code (:program-code state)
+;;                          :running-idx (:running-idx state)
+;;                          :argcount (:argcount operation-configs)
+;;                          :input current-input}]
+;;         (cond
+;;           (= 3 operation) (do
+;;                             (if (not @(:initialised state))
+;;                               (swap! (:initialised state) (fn [_] true))
+;;                               (swap! (:inputs state) #(rest %)))
+;;                             (let [new-configs (apply ((:fn operation-configs) old-configs) values-for-operation)]
+;;                               (swap! (:program-code state) (fn [_] (get new-configs :program-code)))
+;;                               (swap! (:running-idx state) (fn [_] (get new-configs :running-idx)))
+;;                               (swap! (:inputs state) #(into [] (rest %)))))
+;;           (= 4 operation) (do
+;;                             (let [new-configs (apply ((:fn operation-configs) old-configs) values-for-operation)]
+;;                               (swap! (:running-idx state) (fn [_] (get new-configs :running-idx)))
+;;                               (swap! last-output (fn [_] (get new-configs :output)))
+;;                               (swap! suspend (fn [_] true))))
+;;           :else (let [new-configs (apply ((:fn operation-configs) old-configs) values-for-operation)]
+;;                   (swap! (:program-code state) (fn [_] (get new-configs :program-code)))
+;;                   (swap! (:running-idx state) (fn [_] (get new-configs :running-idx)))))))
+     (when (= 99 (nth @(:program-code state) @(:running-idx state)))
+       (swap! (:finished state) (fn [_] true)))
      @last-output)))
 
 (defn run-pt1
@@ -283,12 +297,7 @@
                         cur-settings (get @state cur-computer)
                         new-inputs (swap! (:inputs cur-settings) (fn [_]
                                                                    (identity [cur-amp-setting (first last-output)])))
-                        output (calculate-output
-                                (:program-code cur-settings)
-                                (:running-idx cur-settings)
-                                (:inputs cur-settings)
-                                (:initialised cur-settings)
-                                (:finished cur-settings))]
+                        output (calculate-output cur-settings)]
                     (into [] (cons output last-output))))
                 [0]
                 (take-while (not-finished state current-permutation) (cycle %)))]
