@@ -27,7 +27,7 @@
 
 (defn- extract-value
   [program-code running-idx]
-  (nth @program-code (nth @program-code (+ 1 @runningidx))))
+  (nth @program-code (nth @program-code (+ 1 @running-idx))))
 
 (defn- sum
   [a b c]

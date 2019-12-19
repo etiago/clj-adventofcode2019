@@ -3,7 +3,8 @@
   (:require [clj-adventofcode2019.puzzle1 :as puzzle1]
             [clj-adventofcode2019.puzzle2 :as puzzle2]
             [clj-adventofcode2019.puzzle3 :as puzzle3]
-            [clj-adventofcode2019.puzzle4 :as puzzle4]))
+            [clj-adventofcode2019.puzzle4 :as puzzle4]
+            [clj-adventofcode2019.puzzle13 :as puzzle13]))
 
 (defn -main
   "I don't do a whole lot ... yet."
@@ -22,4 +23,5 @@
         (and (= puzzle "3") (= part "2")) (println (puzzle3/run-pt2))
         (and (= puzzle "4") (= part "1")) (println (puzzle4/run-pt1))
         (and (= puzzle "4") (= part "2")) (println (time (doall (repeatedly runs puzzle4/run-pt2))))
+        (and (= puzzle "13") (= part "1")) (println (puzzle13/run-pt1))
         :else (println "Puzzle not found")))))
